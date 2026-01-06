@@ -293,9 +293,10 @@ export class FileController {
         return;
       }
 
-      // Check if file exists on server
+      // Check if file exists on server and get stats
+      let stats;
       try {
-        const stats = await fs.stat(sanitizedPath);
+        stats = await fs.stat(sanitizedPath);
         if (stats.isDirectory()) {
           res.status(400).json({ error: 'Path is a directory' });
           return;
