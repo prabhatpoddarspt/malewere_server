@@ -211,7 +211,7 @@ export class SocketServer {
     });
 
     deviceSocket.on('microphone:stream:started', (data: any) => {
-      logger.info(`[SocketIO] Microphone stream started from device: ${deviceSocket.id}`);
+      logger.info(`[SocketIO] Microphone stream started from device: ${deviceSocket.id}, deviceId: ${deviceSocket.data.deviceId}`);
       this.io.to('admin').emit('device:microphone:stream:started', {
         deviceId: deviceSocket.data.deviceId,
         ...data,
@@ -228,9 +228,13 @@ export class SocketServer {
 
     deviceSocket.on('microphone:stream:chunk', (data: any) => {
       // Forward audio chunks to all admin sockets
+      logger.debug(`[SocketIO] Forwarding microphone chunk from device: ${deviceSocket.data.deviceId}, data size: ${data.data?.length || 0}`);
       this.io.to('admin').emit('device:microphone:stream:chunk', {
         deviceId: deviceSocket.data.deviceId,
-        ...data,
+        data: data.data,
+        sampleRate: data.sampleRate,
+        timestamp: data.timestamp,
+        channels: data.channels,
       });
     });
 
