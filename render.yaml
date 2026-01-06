@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: malwere-backend
+    env: node
+    plan: free
+    region: oregon
+    rootDir: malwere_backend
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node dist/app.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: malwere-backend
+          property: port
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+
