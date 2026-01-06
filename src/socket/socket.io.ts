@@ -99,11 +99,16 @@ export class SocketServer {
   }
 
   private setupDeviceResponseForwarding(deviceSocket: Socket): void {
+    logger.info(`[SocketIO] Setting up response forwarding for device socket: ${deviceSocket.id}, deviceId: ${deviceSocket.data.deviceId || 'unknown'}`);
+    
     // Forward device responses to waiting admin panel sockets
     const forwardToAdmin = (eventName: string, data: any) => {
+      logger.info(`[SocketIO] === DEVICE RESPONSE RECEIVED ===`);
+      logger.info(`[SocketIO] Event: ${eventName}, DeviceSocketId: ${deviceSocket.id}, Data: ${JSON.stringify(data)}`);
+      
       const requestId = data.requestId;
       if (!requestId) {
-        logger.warn(`[SocketIO] Device response missing requestId - event: ${eventName}`);
+        logger.warn(`[SocketIO] Device response missing requestId - event: ${eventName}, data: ${JSON.stringify(data)}`);
         return;
       }
 
@@ -112,6 +117,7 @@ export class SocketServer {
       const pendingRequest = pendingRequests.get(requestId);
       if (!pendingRequest) {
         logger.warn(`[SocketIO] No pending request found for requestId: ${requestId}, event: ${eventName}`);
+        logger.warn(`[SocketIO] Available pending requests: ${Array.from(pendingRequests.keys()).join(', ')}`);
         return; // No matching request found
       }
 
@@ -121,7 +127,9 @@ export class SocketServer {
       const adminSocket = this.io.sockets.sockets.get(pendingRequest.adminSocketId);
       if (adminSocket) {
         logger.info(`[SocketIO] Forwarding response to admin socket - event: ${eventName}, requestId: ${requestId}, adminSocketId: ${pendingRequest.adminSocketId}`);
+        logger.info(`[SocketIO] Response data: ${JSON.stringify(data)}`);
         adminSocket.emit(eventName, data);
+        logger.info(`[SocketIO] Response forwarded successfully`);
 
         // Clean up if request is complete
         if (eventName.includes('complete') || eventName.includes('error') || eventName.includes('response')) {
@@ -165,6 +173,72 @@ export class SocketServer {
 
     deviceSocket.on('file:metadata:response', (data: any) => {
       forwardToAdmin('device:file:metadata:response', data);
+    });
+
+    // Media stream events - forward directly without requestId matching
+    deviceSocket.on('camera:stream:started', (data: any) => {
+      logger.info(`[SocketIO] Camera stream started from device: ${deviceSocket.id}`);
+      // Broadcast to all admin sockets watching this device
+      this.io.to('admin').emit('device:camera:stream:started', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
+    });
+
+    deviceSocket.on('camera:stream:stopped', (data: any) => {
+      logger.info(`[SocketIO] Camera stream stopped from device: ${deviceSocket.id}`);
+      this.io.to('admin').emit('device:camera:stream:stopped', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
+    });
+
+    deviceSocket.on('camera:stream:frame', (data: any) => {
+      // Forward camera frames to all admin sockets
+      this.io.to('admin').emit('device:camera:stream:frame', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
+    });
+
+    deviceSocket.on('camera:stream:error', (data: any) => {
+      logger.warn(`[SocketIO] Camera stream error from device: ${deviceSocket.id}`);
+      this.io.to('admin').emit('device:camera:stream:error', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
+    });
+
+    deviceSocket.on('microphone:stream:started', (data: any) => {
+      logger.info(`[SocketIO] Microphone stream started from device: ${deviceSocket.id}`);
+      this.io.to('admin').emit('device:microphone:stream:started', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
+    });
+
+    deviceSocket.on('microphone:stream:stopped', (data: any) => {
+      logger.info(`[SocketIO] Microphone stream stopped from device: ${deviceSocket.id}`);
+      this.io.to('admin').emit('device:microphone:stream:stopped', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
+    });
+
+    deviceSocket.on('microphone:stream:chunk', (data: any) => {
+      // Forward audio chunks to all admin sockets
+      this.io.to('admin').emit('device:microphone:stream:chunk', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
+    });
+
+    deviceSocket.on('microphone:stream:error', (data: any) => {
+      logger.warn(`[SocketIO] Microphone stream error from device: ${deviceSocket.id}`);
+      this.io.to('admin').emit('device:microphone:stream:error', {
+        deviceId: deviceSocket.data.deviceId,
+        ...data,
+      });
     });
   }
 

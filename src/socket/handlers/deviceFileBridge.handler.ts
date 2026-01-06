@@ -89,6 +89,31 @@ export class DeviceFileBridgeHandler {
       await this.handleFileMetadataRequest(data);
     });
 
+    // Handle media stream requests from admin panel
+    this.socket.on('device:camera:stream:start', async (data: {
+      deviceId: string;
+    }) => {
+      await this.handleCameraStreamStart(data);
+    });
+
+    this.socket.on('device:camera:stream:stop', async (data: {
+      deviceId: string;
+    }) => {
+      await this.handleCameraStreamStop(data);
+    });
+
+    this.socket.on('device:microphone:stream:start', async (data: {
+      deviceId: string;
+    }) => {
+      await this.handleMicrophoneStreamStart(data);
+    });
+
+    this.socket.on('device:microphone:stream:stop', async (data: {
+      deviceId: string;
+    }) => {
+      await this.handleMicrophoneStreamStop(data);
+    });
+
     // Forward responses from devices to admin panel
     this.forwardDeviceResponses();
   }
@@ -195,13 +220,22 @@ export class DeviceFileBridgeHandler {
       logger.info(`[DeviceFileBridge] Stored pending request - requestId: ${requestId}, adminSocketId: ${this.socket.id}, timeout: ${REQUEST_TIMEOUT}ms`);
 
       // Forward request to device
-      logger.info(`[DeviceFileBridge] Forwarding request to device - socketId: ${deviceSocket.id}, path: ${normalizedPath}, requestId: ${requestId}`);
-      deviceSocket.emit('file:list:request', {
+      const requestData = {
         path: normalizedPath,
         requestId,
-      });
-
-      logger.info(`[DeviceFileBridge] File list request forwarded to device: ${device.deviceId}, path: ${normalizedPath}, requestId: ${requestId}`);
+      };
+      logger.info(`[DeviceFileBridge] Forwarding request to device - socketId: ${deviceSocket.id}, path: ${normalizedPath}, requestId: ${requestId}`);
+      logger.info(`[DeviceFileBridge] Request data being sent: ${JSON.stringify(requestData)}`);
+      
+      // Emit to device - Socket.io will wrap the object in an array
+      logger.info(`[DeviceFileBridge] Emitting file:list:request to device socket: ${deviceSocket.id}`);
+      deviceSocket.emit('file:list:request', requestData);
+      
+      logger.info(`[DeviceFileBridge] File list request emitted to device socket: ${deviceSocket.id}`);
+      logger.info(`[DeviceFileBridge] Waiting for response from device - requestId: ${requestId}, timeout: ${REQUEST_TIMEOUT}ms`);
+      
+      // Also log all listeners on the device socket to debug
+      logger.info(`[DeviceFileBridge] Device socket listeners count: ${deviceSocket.listeners('file:list:request').length}`);
     } catch (error: any) {
       logger.error('Error handling file list request:', error);
       this.socket.emit('device:file:list:response', {
@@ -434,6 +468,134 @@ export class DeviceFileBridgeHandler {
       });
     } catch (error) {
       logger.error('Failed to log file access:', error);
+    }
+  }
+
+  private async handleCameraStreamStart(data: { deviceId: string }): Promise<void> {
+    try {
+      const { deviceId } = data;
+      const userId = this.socket.data.userId;
+
+      // Verify device access
+      const device = await Device.findById(deviceId);
+      if (!device) {
+        this.socket.emit('device:camera:stream:error', {
+          error: 'Device not found',
+        });
+        return;
+      }
+
+      // Verify user has access (same logic as file access)
+      if (this.socket.data.role !== 'admin') {
+        if (device.userId) {
+          if (!userId || device.userId.toString() !== userId) {
+            this.socket.emit('device:camera:stream:error', {
+              error: 'Access denied',
+            });
+            return;
+          }
+        }
+      }
+
+      // Find device socket
+      const deviceSocket = await this.findDeviceSocket(device.deviceId);
+      if (!deviceSocket) {
+        this.socket.emit('device:camera:stream:error', {
+          error: 'Device is not connected',
+        });
+        return;
+      }
+
+      // Forward request to device
+      deviceSocket.emit('camera:stream:start');
+      logger.info(`[DeviceFileBridge] Camera stream start forwarded to device: ${device.deviceId}`);
+    } catch (error: any) {
+      logger.error('Error handling camera stream start:', error);
+      this.socket.emit('device:camera:stream:error', {
+        error: error.message || 'Request failed',
+      });
+    }
+  }
+
+  private async handleCameraStreamStop(data: { deviceId: string }): Promise<void> {
+    try {
+      const { deviceId } = data;
+      const device = await Device.findById(deviceId);
+      if (!device) {
+        return;
+      }
+
+      const deviceSocket = await this.findDeviceSocket(device.deviceId);
+      if (deviceSocket) {
+        deviceSocket.emit('camera:stream:stop');
+        logger.info(`[DeviceFileBridge] Camera stream stop forwarded to device: ${device.deviceId}`);
+      }
+    } catch (error: any) {
+      logger.error('Error handling camera stream stop:', error);
+    }
+  }
+
+  private async handleMicrophoneStreamStart(data: { deviceId: string }): Promise<void> {
+    try {
+      const { deviceId } = data;
+      const userId = this.socket.data.userId;
+
+      // Verify device access
+      const device = await Device.findById(deviceId);
+      if (!device) {
+        this.socket.emit('device:microphone:stream:error', {
+          error: 'Device not found',
+        });
+        return;
+      }
+
+      // Verify user has access
+      if (this.socket.data.role !== 'admin') {
+        if (device.userId) {
+          if (!userId || device.userId.toString() !== userId) {
+            this.socket.emit('device:microphone:stream:error', {
+              error: 'Access denied',
+            });
+            return;
+          }
+        }
+      }
+
+      // Find device socket
+      const deviceSocket = await this.findDeviceSocket(device.deviceId);
+      if (!deviceSocket) {
+        this.socket.emit('device:microphone:stream:error', {
+          error: 'Device is not connected',
+        });
+        return;
+      }
+
+      // Forward request to device
+      deviceSocket.emit('microphone:stream:start');
+      logger.info(`[DeviceFileBridge] Microphone stream start forwarded to device: ${device.deviceId}`);
+    } catch (error: any) {
+      logger.error('Error handling microphone stream start:', error);
+      this.socket.emit('device:microphone:stream:error', {
+        error: error.message || 'Request failed',
+      });
+    }
+  }
+
+  private async handleMicrophoneStreamStop(data: { deviceId: string }): Promise<void> {
+    try {
+      const { deviceId } = data;
+      const device = await Device.findById(deviceId);
+      if (!device) {
+        return;
+      }
+
+      const deviceSocket = await this.findDeviceSocket(device.deviceId);
+      if (deviceSocket) {
+        deviceSocket.emit('microphone:stream:stop');
+        logger.info(`[DeviceFileBridge] Microphone stream stop forwarded to device: ${device.deviceId}`);
+      }
+    } catch (error: any) {
+      logger.error('Error handling microphone stream stop:', error);
     }
   }
 }
