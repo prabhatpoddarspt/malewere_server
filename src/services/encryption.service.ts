@@ -32,7 +32,7 @@ export class EncryptionService {
     const key = this.getKey(secret);
 
     // Extract salt, iv, tag, and encrypted data
-    const salt = Buffer.from(encryptedData.slice(0, this.saltLength * 2), 'hex');
+    // const salt = Buffer.from(encryptedData.slice(0, this.saltLength * 2), 'hex'); // Unused
     const iv = Buffer.from(
       encryptedData.slice(this.saltLength * 2, this.tagPosition * 2),
       'hex'

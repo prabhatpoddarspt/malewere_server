@@ -5,7 +5,7 @@ import logger from '../utils/logger';
 import AuditLog from '../models/AuditLog';
 
 export class UserController {
-  getAllUsers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  getAllUsers = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const users = await User.find({})
         .select('-password -twoFactorSecret')
@@ -69,8 +69,8 @@ export class UserController {
       });
 
       const userResponse = user.toObject();
-      delete userResponse.password;
-      delete userResponse.twoFactorSecret;
+      delete (userResponse as any).password;
+      delete (userResponse as any).twoFactorSecret;
 
       res.json({ user: userResponse });
     } catch (error: any) {
@@ -133,8 +133,8 @@ export class UserController {
       });
 
       const userResponse = user.toObject();
-      delete userResponse.password;
-      delete userResponse.twoFactorSecret;
+      delete (userResponse as any).password;
+      delete (userResponse as any).twoFactorSecret;
 
       res.json({ user: userResponse });
     } catch (error: any) {

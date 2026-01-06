@@ -35,7 +35,7 @@ export class AuthService {
     return jwt.sign(
       { userId, role, type: 'access' },
       this.JWT_SECRET,
-      { expiresIn: this.JWT_EXPIRES_IN }
+      { expiresIn: this.JWT_EXPIRES_IN } as jwt.SignOptions
     );
   }
 
@@ -43,7 +43,7 @@ export class AuthService {
     return jwt.sign(
       { userId, type: 'refresh' },
       this.JWT_SECRET,
-      { expiresIn: this.REFRESH_TOKEN_EXPIRES_IN }
+      { expiresIn: this.REFRESH_TOKEN_EXPIRES_IN } as jwt.SignOptions
     );
   }
 

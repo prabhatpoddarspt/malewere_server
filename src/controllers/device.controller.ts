@@ -8,7 +8,7 @@ import { auditLogAsync } from '../utils/auditLogger';
 import mongoose from 'mongoose';
 
 export class DeviceController {
-  getAllDevices = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  getAllDevices = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       // Admin panel is read-only - only view devices created by applications
       // All devices come from applications, so show all devices (including anonymous)
@@ -85,7 +85,7 @@ export class DeviceController {
       }
 
       // Non-admin users can only see their own devices
-      if (req.user?.role !== 'admin' && device.userId.toString() !== userId) {
+      if (req.user?.role !== 'admin' && device.userId && device.userId.toString() !== userId) {
         res.status(403).json({ error: 'Forbidden' });
         return;
       }

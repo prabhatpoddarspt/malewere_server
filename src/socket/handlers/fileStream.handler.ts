@@ -9,13 +9,12 @@ import { FileStreamRequest } from '../../types';
 
 export class FileStreamHandler {
   private socket: Socket;
-  private io: Server;
   private readonly CHUNK_SIZE = 64 * 1024; // 64KB chunks
   private activeStreams: Map<string, fs.ReadStream> = new Map();
 
-  constructor(socket: Socket, io: Server) {
+  constructor(socket: Socket, _io: Server) {
     this.socket = socket;
-    this.io = io;
+    // io parameter kept for API consistency but not used
     this.setupEventHandlers();
   }
 
@@ -44,7 +43,7 @@ export class FileStreamHandler {
       }
 
       // Verify user owns the device
-      if (device.userId.toString() !== userId) {
+      if (device.userId && device.userId.toString() !== userId) {
         this.socket.emit('stream:error', { streamId, error: 'Unauthorized device access' });
         await this.logFileAccess(userId, deviceId, filePath, 'view', false);
         return;
@@ -96,13 +95,14 @@ export class FileStreamHandler {
         fileName: path.basename(filePath),
       });
 
-      fileStream.on('data', (chunk: Buffer) => {
-        bytesRead += chunk.length;
+      fileStream.on('data', (chunk: string | Buffer) => {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        bytesRead += buffer.length;
         const progress = Math.round((bytesRead / fileSize) * 100);
 
         this.socket.emit('stream:chunk', {
           streamId,
-          chunk: chunk.toString('base64'),
+          chunk: buffer.toString('base64'),
           progress,
           bytesRead,
         });

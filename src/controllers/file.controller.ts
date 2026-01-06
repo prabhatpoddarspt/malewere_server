@@ -12,18 +12,18 @@ import fsSync from 'fs';
 import path from 'path';
 import multer from 'multer';
 import mongoose from 'mongoose';
-import { Server as SocketIOServer } from 'socket.io';
+// import { Server as SocketIOServer } from 'socket.io'; // Unused import
 
 const fileService = new FileService();
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (_req, _file, cb) => {
     const uploadDir = config.file.uploadDir;
     FileUtils.ensureDirectoryExists(uploadDir);
     cb(null, uploadDir);
   },
-  filename: (req, file, cb) => {
+  filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   },
@@ -34,7 +34,7 @@ const upload = multer({
   limits: {
     fileSize: config.file.maxSize,
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     const allowedTypes = config.file.allowedTypes;
     if (FileUtils.isAllowedFileType(file.originalname, allowedTypes)) {
       cb(null, true);
@@ -48,8 +48,10 @@ export const uploadMiddleware = upload.single('file');
 
 export class FileController {
   listFiles = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    let dirPath: string | undefined;
     try {
-      let { path: dirPath, deviceId } = req.query;
+      let { path: pathParam, deviceId } = req.query;
+      dirPath = pathParam as string;
 
       logger.info(`[FileController] listFiles request - deviceId: ${deviceId}, path: ${dirPath}, userId: ${req.user?.userId || 'N/A'}`);
 
@@ -150,7 +152,9 @@ export class FileController {
       res.json({ files });
       logger.info(`[FileController] Successfully returned file list - count: ${files.length}`);
     } catch (error: any) {
-      logger.error(`[FileController] List files error - deviceId: ${deviceId}, path: ${dirPath}, error:`, error);
+      const errorDeviceId = (req.query.deviceId as string) || 'unknown';
+      const errorPath = (req.query.path as string) || dirPath || 'unknown';
+      logger.error(`[FileController] List files error - deviceId: ${errorDeviceId}, path: ${errorPath}, error:`, error);
 
       // Log file access failure
       if (req.query.deviceId) {
@@ -526,7 +530,7 @@ export class FileController {
     }
   };
 
-  listUploads = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  listUploads = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       // Public endpoint - no authentication required
       const uploadsDir = config.file.uploadDir;

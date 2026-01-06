@@ -4,11 +4,10 @@ import logger from '../../utils/logger';
 
 export class ConnectionHandler {
   private socket: Socket;
-  private io: Server;
 
-  constructor(socket: Socket, io: Server) {
+  constructor(socket: Socket, _io: Server) {
     this.socket = socket;
-    this.io = io;
+    // io parameter kept for API consistency but not used
     this.setupEventHandlers();
   }
 

@@ -61,7 +61,7 @@ app.use(apiLimiter);
 app.use(morganMiddleware);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -79,8 +79,8 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/settings', settingsRoutes);
 
 // 404 handler
-app.use((req, res, next) => {
-  next(new AppError(`Route ${req.method} ${req.path} not found`, 404));
+app.use((_req, _res, next) => {
+  next(new AppError(`Route ${_req.method} ${_req.path} not found`, 404));
 });
 
 // Error handling middleware (must be last)

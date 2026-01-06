@@ -103,7 +103,7 @@ export class SettingsController {
       await user.save();
 
       const userResponse = user.toObject();
-      delete userResponse.password;
+      delete (userResponse as any).password;
       delete userResponse.twoFactorSecret;
 
       res.json({

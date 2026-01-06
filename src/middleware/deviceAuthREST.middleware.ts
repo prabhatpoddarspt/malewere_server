@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import Device from '../models/Device';
 import { AuthenticatedRequest } from '../types';
 import logger from '../utils/logger';

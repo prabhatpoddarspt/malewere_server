@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuditLogController } from '../controllers/auditLog.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
+// import { authorize } from '../middleware/auth.middleware'; // Unused
 
 const router = Router();
 const auditLogController = new AuditLogController();

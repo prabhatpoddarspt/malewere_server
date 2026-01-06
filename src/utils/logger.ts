@@ -1,6 +1,6 @@
 import { createLogger, transports, format } from 'winston';
 import fs from 'fs';
-import path from 'path';
+// import path from 'path'; // Unused
 
 // Ensure logs directory exists
 const logsDir = './src/logs';
@@ -17,7 +17,6 @@ const logger = createLogger({
     new transports.Console(),
     new transports.File({
       filename: `./src/logs/${new Date().toDateString().split(' ').join('-')}.log`,
-      json: false,
       maxsize: 5242880,
       maxFiles: 5,
     }),
