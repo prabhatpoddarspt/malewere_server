@@ -9,4 +9,9 @@ coverage/
 *.swp
 *.swo
 *~
+uploads/
+
+# Docker
+.docker/
+docker-compose.override.yml
 
