@@ -197,7 +197,8 @@ export class SocketServer {
       // Forward camera frames to all admin sockets
       this.io.to('admin').emit('device:camera:stream:frame', {
         deviceId: deviceSocket.data.deviceId,
-        ...data,
+        data: data.data,
+        timestamp: data.timestamp,
       });
     });
 

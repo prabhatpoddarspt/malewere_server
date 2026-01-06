@@ -268,15 +268,50 @@ export class FileController {
         }
       }
 
-      const sanitizedPath = FileUtils.sanitizePath(filePath as string);
+      // Check if this is a device file path (should use WebSocket)
+      const filePathStr = filePath as string;
+      const isDevicePath = filePathStr.includes('/storage/') || 
+                          filePathStr.includes('/sdcard/') || 
+                          filePathStr.startsWith('/storage/') ||
+                          filePathStr.startsWith('/sdcard/') ||
+                          (device.isOnline && !filePathStr.startsWith('/'));
+
+      if (isDevicePath && device.isOnline) {
+        logger.info(`[FileController] Device file download requested via REST - path: ${filePathStr}, deviceId: ${deviceId}`);
+        logger.info(`[FileController] Device is online - redirecting to WebSocket streaming`);
+        res.status(503).json({ 
+          error: 'Service Unavailable',
+          message: 'Device files must be downloaded via WebSocket streaming. Use the WebSocket API for device file operations.',
+          useWebSocket: true,
+        });
+        return;
+      }
+
+      const sanitizedPath = FileUtils.sanitizePath(filePathStr);
       if (!sanitizedPath || !FileUtils.isPathAuthorized(sanitizedPath, device.authorizedPaths)) {
         res.status(403).json({ error: 'Unauthorized path' });
         return;
       }
 
-      const stats = await fs.stat(sanitizedPath);
-      if (stats.isDirectory()) {
-        res.status(400).json({ error: 'Path is a directory' });
+      // Check if file exists on server
+      try {
+        const stats = await fs.stat(sanitizedPath);
+        if (stats.isDirectory()) {
+          res.status(400).json({ error: 'Path is a directory' });
+          return;
+        }
+      } catch (error: any) {
+        // File doesn't exist on server - might be a device file
+        if (device.isOnline) {
+          logger.info(`[FileController] File not found on server, device is online - use WebSocket: ${sanitizedPath}`);
+          res.status(503).json({ 
+            error: 'Service Unavailable',
+            message: 'File not found on server. For device files, use WebSocket streaming.',
+            useWebSocket: true,
+          });
+          return;
+        }
+        res.status(404).json({ error: 'File not found' });
         return;
       }
 
